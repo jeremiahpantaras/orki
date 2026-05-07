@@ -3,15 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #1e293b;
+  --secondary: #334155;
   --primary: #2fa2e2;
   --success: #10b981;
-  --muted: #64748b;
+  --muted: #475569;
   --border: #e2e8f0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-secondary: var(--secondary);
   --color-primary: var(--primary);
   --color-success: var(--success);
   --color-muted: var(--muted);
@@ -52,4 +54,37 @@ h6 {
 
 .font-body {
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+/* Landing page float animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes floatAlt {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: floatAlt 5s ease-in-out 2s infinite;
+}
+
+.animate-float-slow {
+  animation: float 7s ease-in-out 1s infinite;
 }

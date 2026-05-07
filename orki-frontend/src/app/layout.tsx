@@ -17,6 +17,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Orki",
   description: "Study smarter for board exam success.",
+  icons: {
+    icon: [
+      { url: "/Logo/OrkiLogo.svg", type: "image/svg+xml" },
+      { url: "/Logo/OrkiLogo.webp", type: "image/webp" },
+    ],
+    shortcut: "/Logo/OrkiLogo.svg",
+    apple: "/Logo/OrkiLogo.webp",
+  },
 };
 
 export default function RootLayout({
