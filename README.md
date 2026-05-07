@@ -42,6 +42,11 @@ orki/
 └── README.md
 ```
 
+### Current repository status
+
+- `orki-backend` is currently scaffold-level (apps and Django config created; domain models/views are mostly placeholders).
+- `orki-frontend` now contains a production-ready starter structure with route groups, shared API layer, and feature-aligned pages.
+
 ---
 
 # 🔙 Backend (Django API)
