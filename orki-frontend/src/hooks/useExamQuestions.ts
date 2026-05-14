@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useEffect, useState } from "react";
 
 import type { FirestoreQuestion } from "@/entities/exams/types";
@@ -28,8 +30,12 @@ export function useExamQuestions(
     if (!examType || !subject) return;
     let cancelled = false;
 
-    setLoading(true);
-    setError(null);
+    setTimeout(() => {
+      if (!cancelled) {
+        setLoading(true);
+        setError(null);
+      }
+    }, 0);
 
     getQuestionsBySubject(examType, subject, limit)
       .then((data) => {

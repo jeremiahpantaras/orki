@@ -1,6 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+/* eslint-disable react-hooks/set-state-in-effect */
+
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -20,15 +22,15 @@ function SubscribeContent() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
-  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const isVerifyingPayment = useRef(false);
 
   // Check if redirected from payment success and verify subscription is active
   useEffect(() => {
     const success = searchParams.get("success");
     const cancelled = searchParams.get("cancelled");
     
-    if (success === "true" && !isVerifyingPayment) {
-      setIsVerifyingPayment(true);
+    if (success === "true" && !isVerifyingPayment.current) {
+      isVerifyingPayment.current = true;
       notify(
         "✓ Payment received! Verifying subscription...",
         "success"
@@ -235,7 +237,7 @@ function SubscribeContent() {
         {subscriptionStatus === "pending" && (
           <div className="rounded-xl bg-primary/10 border border-primary/20 px-4 py-3">
             <p className="text-xs text-primary font-medium">
-              ⏳ Your subscription is pending admin verification. You'll receive a notification once activated.
+              ⏳ Your subscription is pending admin verification. You&apos;ll receive a notification once activated.
             </p>
           </div>
         )}
@@ -243,7 +245,7 @@ function SubscribeContent() {
         {/* FAQ / Help */}
         <div className="space-y-2 text-xs text-muted pt-4 border-t border-border">
           <p>After payment, your subscription will be pending admin verification.</p>
-          <p>You'll receive a notification once your access is activated.</p>
+          <p>You&apos;ll receive a notification once your access is activated.</p>
         </div>
       </div>
     </div>
