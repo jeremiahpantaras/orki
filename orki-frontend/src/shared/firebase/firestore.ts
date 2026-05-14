@@ -54,12 +54,14 @@ export async function getSubjectsByExamType(
     where("exam_type", "==", examType),
   );
   const snap = await getDocs(q);
-  const docs = snap.docs.map((doc) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const docs = snap.docs.map((doc: any) => ({
     id: doc.id,
     ...(doc.data() as Omit<FirestoreSubject, "id">),
   }));
   // Sort alphabetically by name for stable ordering
-  return docs.sort((a, b) => a.name.localeCompare(b.name));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return docs.sort((a: any, b: any) => a.name.localeCompare(b.name));
 }
 
 // ─── Questions ────────────────────────────────────────────────────────────────
@@ -83,7 +85,8 @@ export async function getQuestionsBySubject(
     where("subject", "==", subject),
   );
   const snap = await getDocs(q);
-  const docs = snap.docs.map((doc) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const docs = snap.docs.map((doc: any) => ({
     id: doc.id,
     ...(doc.data() as Omit<FirestoreQuestion, "id">),
   }));
