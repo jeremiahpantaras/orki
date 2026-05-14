@@ -11,7 +11,9 @@ def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
     if response is None:
-        # Unhandled exception – return a generic 500 without leaking internals
+        # Unhandled exception – print traceback to terminal and return a generic 500
+        import traceback
+        traceback.print_exc()
         return Response(
             {"detail": "An unexpected error occurred."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
