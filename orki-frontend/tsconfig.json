@@ -19,7 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "firebase/auth": ["./node_modules/@firebase/auth/dist/index.d.ts"],
+      "firebase/firestore": ["./node_modules/@firebase/firestore/dist/index.d.ts"],
+      "firebase/app": ["./node_modules/@firebase/app/dist/index.d.ts"]
     }
   },
   "include": [

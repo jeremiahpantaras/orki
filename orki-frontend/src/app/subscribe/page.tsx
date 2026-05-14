@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +12,7 @@ type CheckoutResponse = {
   reference_id: string;
 };
 
-export default function SubscribePage() {
+function SubscribeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
@@ -63,7 +63,7 @@ export default function SubscribePage() {
         // If we got here, subscription didn't activate in time
         notify(
           "Payment confirmed but subscription hasn't activated yet. Redirecting to exams...",
-          "warning"
+          "info"
         );
         setTimeout(() => router.replace(routes.exams), 2000);
       };
@@ -280,4 +280,18 @@ function getCsrfToken(): string {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
   return match ? match[1] : "";
+}
+
+export default function SubscribePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" />
+        </div>
+      }
+    >
+      <SubscribeContent />
+    </Suspense>
+  );
 }
