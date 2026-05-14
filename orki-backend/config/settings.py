@@ -168,7 +168,7 @@ CORS_EXPOSE_HEADERS = ["X-CSRFToken"]
 
 CSRF_TRUSTED_ORIGINS = _CORS_ORIGINS
 CSRF_COOKIE_HTTPONLY = False           # Frontend JS must be able to read it for the header
-CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = not DEBUG         # HTTPS-only in production
 
 # ─── Session Security ─────────────────────────────────────────────────────────
@@ -177,7 +177,7 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_NAME = "orki_session"
 SESSION_COOKIE_HTTPONLY = True         # Not accessible to client JS
 SESSION_COOKIE_SECURE = not DEBUG      # HTTPS-only in production
-SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
 
 # ─── Security Headers ─────────────────────────────────────────────────────────
