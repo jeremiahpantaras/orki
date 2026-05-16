@@ -42,10 +42,9 @@ export function SignInForm() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Exchange a Firebase credential for a backend server session. */
-  async function exchangeToken(getIdToken: () => Promise<string>) {
-    const idToken = await getIdToken();
-    const { user } = await loginWithBackend(idToken);
+  /** Create/retrieve the backend Firestore profile after Firebase sign-in. */
+  async function syncBackendProfile() {
+    const { user } = await loginWithBackend();
     setUser(user);
   }
 
@@ -54,8 +53,8 @@ export function SignInForm() {
     setIsLoading(true);
     setError(null);
     try {
-      const credential = await signInWithEmail(email, password);
-      await exchangeToken(() => credential.user.getIdToken());
+      await signInWithEmail(email, password);
+      await syncBackendProfile();
       notify("You are logged in", "success");
       router.replace(routes.onboarding);
     } catch (err) {
@@ -71,8 +70,8 @@ export function SignInForm() {
     setIsGoogleLoading(true);
     setError(null);
     try {
-      const credential = await signInWithGoogle();
-      await exchangeToken(() => credential.user.getIdToken());
+      await signInWithGoogle();
+      await syncBackendProfile();
       notify("You are logged in", "success");
       router.replace(routes.onboarding);
     } catch (err) {

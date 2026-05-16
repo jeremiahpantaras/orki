@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-import type { FirestoreQuestion } from "@/entities/exams/types";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { getExamAttempt, getQuestionsBySubject } from "@/shared/firebase/firestore";
 

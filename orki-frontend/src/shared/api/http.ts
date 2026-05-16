@@ -18,25 +18,30 @@ export class ApiError extends Error {
 }
 
 /**
- * Read the Django CSRF token from the `csrftoken` cookie.
- * Returns an empty string in SSR contexts where `document` is unavailable.
+ * Returns an Authorization header value with a fresh Firebase ID token,
+ * or null when there is no authenticated Firebase user (e.g. SSR, logged out).
  */
-function getCsrfToken(): string {
-  if (typeof document === "undefined") return "";
-  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-  return match ? match[1] : "";
+async function getAuthorizationHeader(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const { auth } = await import("@/shared/firebase/client");
+    // Wait for Firebase to restore the persisted auth session before reading currentUser
+    await auth.authStateReady();
+    const token = await auth.currentUser?.getIdToken();
+    return token ? `Bearer ${token}` : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function http<T>(path: string, init: RequestInitWithBody = {}): Promise<T> {
-  const method = (init.method ?? "GET").toUpperCase();
-  const isMutation = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  const authHeader = await getAuthorizationHeader();
 
   const response = await fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {
     ...init,
-    credentials: "include",        // Send session cookie on every request
     headers: {
       "Content-Type": "application/json",
-      ...(isMutation ? { "X-CSRFToken": getCsrfToken() } : {}),
+      ...(authHeader ? { Authorization: authHeader } : {}),
       ...(init.headers ?? {}),
     },
     body: init.body ? JSON.stringify(init.body) : undefined,

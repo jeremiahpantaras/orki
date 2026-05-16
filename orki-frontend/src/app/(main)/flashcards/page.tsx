@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type { FirestoreFlashcard, FlashcardProgress } from "@/entities/flashcards/types";
@@ -10,17 +10,18 @@ import { ResumeFlashcardsModal } from "@/widgets/flashcards/resume-flashcards-mo
 import { getFlashcardsForSubject } from "@/shared/api/flashcards";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
-import { getSubjectsByExam } from "@/shared/utils/exam-type";
+import { SUBJECT_COLORS } from "@/shared/utils/exam-type";
+import { getSubjectsByExamType } from "@/shared/firebase/firestore";
 import { routes } from "@/shared/config/routes";
 
 const CARDS_PER_SUBJECT = 30;
 
 // ─── Progress persistence (localStorage) ─────────────────────────────────────
-function progressKey(userId: number): string {
+function progressKey(userId: string): string {
   return `orki_flashcard_progress_${userId}`;
 }
 
-function loadProgress(userId: number): FlashcardProgress | null {
+function loadProgress(userId: string): FlashcardProgress | null {
   try {
     const raw = localStorage.getItem(progressKey(userId));
     if (!raw) return null;
@@ -30,7 +31,7 @@ function loadProgress(userId: number): FlashcardProgress | null {
   }
 }
 
-function persistProgress(userId: number, p: FlashcardProgress): void {
+function persistProgress(userId: string, p: FlashcardProgress): void {
   try {
     localStorage.setItem(progressKey(userId), JSON.stringify(p));
   } catch {
@@ -38,7 +39,7 @@ function persistProgress(userId: number, p: FlashcardProgress): void {
   }
 }
 
-function clearPersistedProgress(userId: number): void {
+function clearPersistedProgress(userId: string): void {
   try {
     localStorage.removeItem(progressKey(userId));
   } catch {
@@ -230,7 +231,7 @@ function ErrorBanner({
 export default function FlashcardsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { isSubscribed, subLoading } = useSubscriptionStatus(user?.id);
+  const { isSubscribed, subLoading } = useSubscriptionStatus(user?.uid);
 
   // ── Session state (lifted here so page can always read position for saves) ─
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
@@ -252,20 +253,37 @@ export default function FlashcardsPage() {
 
   const pathname = usePathname();
   const examType = user?.exam_type ?? null;
-  const subjects = useMemo(() => getSubjectsByExam(examType), [examType]);
+
+  // ── Subjects (loaded from Firestore so names always match stored data) ──────
+  // null = not yet fetched; [] = fetched but empty
+  const [subjects, setSubjects] = useState<Array<{ name: string; color: string }> | null>(null);
+
+  useEffect(() => {
+    if (!examType) return;
+    getSubjectsByExamType(examType)
+      .then((firestoreSubjects) => {
+        setSubjects(
+          firestoreSubjects.map((s, i) => ({
+            name: s.name,
+            color: SUBJECT_COLORS[i % SUBJECT_COLORS.length] ?? "#2FA2E2",
+          }))
+        );
+      })
+      .catch(() => setSubjects([]));
+  }, [examType]);
 
   // ── Auto-save ref ─────────────────────────────────────────────────────────
   // Kept in a ref so the beforeunload handler always sees fresh values
   // without needing to be re-registered on every state change.
   const autoSaveRef = useRef<{
-    userId: number;
+    userId: string;
     progress: FlashcardProgress;
   } | null>(null);
 
   useEffect(() => {
     if (user && activeSubject && examType) {
       autoSaveRef.current = {
-        userId: user.id,
+        userId: user.uid,
         progress: {
           examType,
           subject: activeSubject,
@@ -295,13 +313,12 @@ export default function FlashcardsPage() {
   // away from and back to this page (Next.js may keep the component alive).
   useEffect(() => {
     if (authLoading || !user) return;
-    const progress = loadProgress(user.id);
+    const progress = loadProgress(user.uid);
     if (progress && progress.examType === user.exam_type) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSavedProgress(progress);
     } else {
       // Clear stale state if localStorage was wiped externally.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSavedProgress(null);
     }
   }, [authLoading, user, pathname]);
@@ -375,7 +392,7 @@ export default function FlashcardsPage() {
       currentIndex,
       lastUpdated: new Date().toISOString(),
     };
-    persistProgress(user.id, progress);
+    persistProgress(user.uid, progress);
     // Update button label state but do NOT open ResumeModal — user must
     // explicitly click "Resume Progress →" to trigger it.
     setSavedProgress(progress);
@@ -391,7 +408,7 @@ export default function FlashcardsPage() {
   /** Re-fetch cards for a fresh shuffle, reset to card 0. */
   const handleRestart = useCallback(async () => {
     if (!examType || !activeSubject) return;
-    if (user) clearPersistedProgress(user.id);
+    if (user) clearPersistedProgress(user.uid);
     setSavedProgress(null);
     setCurrentIndex(0);
     setFlipped(false);
@@ -414,7 +431,7 @@ export default function FlashcardsPage() {
 
   /** Discard saved progress and start the subject fresh. */
   function handleDismissResume() {
-    if (user) clearPersistedProgress(user.id);
+    if (user) clearPersistedProgress(user.uid);
     setSavedProgress(null);
     setIsResumeModalOpen(false);
   }
@@ -440,9 +457,9 @@ export default function FlashcardsPage() {
     });
   }, []);
 
-  // ── Auth loading ───────────────────────────────────────────────────────────
+  // ── Auth / subjects loading ────────────────────────────────────────────────
 
-  if (authLoading) {
+  if (authLoading || subjects === null) {
     return (
       <div className="animate-page-in space-y-8 px-4 pb-24 pt-6 sm:px-6">
         <div className="space-y-1.5">

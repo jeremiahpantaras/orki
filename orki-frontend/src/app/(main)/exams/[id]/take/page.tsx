@@ -149,7 +149,7 @@ export default function ExamTakePage() {
     const existingId = localStorage.getItem(storageKey);
 
     async function init() {
-      if (existingId && existingId !== "local" && user?.id) {
+      if (existingId && existingId !== "local" && user?.uid) {
         // ── Authenticated: restore from Firestore ──────────────────────────────
         try {
           const session = await getExamSession(existingId);
@@ -218,7 +218,7 @@ export default function ExamTakePage() {
 
     void init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, questions.length, sessionReady, examType, subject, user?.id]);
+  }, [loading, questions.length, sessionReady, examType, subject, user?.uid]);
 
   // ─── Navigation guard (browser close / hard refresh) ─────────────────────────
   useEffect(() => {
@@ -236,9 +236,9 @@ export default function ExamTakePage() {
 
   async function createFreshSession() {
     let newId = "local";
-    if (user?.id) {
+    if (user?.uid) {
       try {
-        newId = await createExamSession(String(user.id), {
+        newId = await createExamSession(user.uid, {
           exam_type: examType,
           subject,
           answers: {},
@@ -262,7 +262,7 @@ export default function ExamTakePage() {
     const s = useExamStore.getState();
 
     // For local (unauthenticated / offline) sessions — persist state to localStorage.
-    if (!s.sessionId || s.sessionId === "local" || !user?.id) {
+    if (!s.sessionId || s.sessionId === "local" || !user?.uid) {
       const targetStatus = overrideStatus ?? s.status;
       if (targetStatus !== "completed") {
         try {
@@ -334,7 +334,7 @@ export default function ExamTakePage() {
 
   async function handleRestart() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    if (sessionId && sessionId !== "local" && user?.id) {
+    if (sessionId && sessionId !== "local" && user?.uid) {
       await deleteExamSession(sessionId).catch(() => {});
     }
     localStorage.removeItem(sessionStorageKey(examType, subject));
@@ -363,8 +363,8 @@ export default function ExamTakePage() {
     const score = total > 0 ? Math.round((totalCorrect / total) * 100) : 0;
 
     try {
-      if (user?.id) {
-        const attemptId = await saveExamAttempt(String(user.id), {
+      if (user?.uid) {
+        const attemptId = await saveExamAttempt(user.uid, {
           exam_type: examType,
           subject,
           score,
@@ -374,7 +374,7 @@ export default function ExamTakePage() {
           answers,
         });
 
-        await saveAnalytics(String(user.id), {
+        await saveAnalytics(user.uid, {
           exam_type: examType,
           subject,
           score,

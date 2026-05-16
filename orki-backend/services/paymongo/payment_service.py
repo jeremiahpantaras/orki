@@ -66,7 +66,7 @@ class PayMongoService:
     @classmethod
     def create_checkout(
         cls, 
-        user_id: int, 
+        firebase_uid: str, 
         user_email: str,
         payment_methods: Optional[list] = None
     ) -> PayMongoCheckout:
@@ -74,7 +74,7 @@ class PayMongoService:
         Create a PayMongo checkout session for subscription payment.
         
         Args:
-            user_id: User ID for metadata
+            firebase_uid: Firebase UID for Firestore lookup in webhook
             user_email: User email for metadata and client identification
             payment_methods: List of allowed payment methods (default: all)
                             Valid: ["gcash", "paymaya", "card", "qrph"]
@@ -101,7 +101,7 @@ class PayMongoService:
                     "line_items": [
                         {
                             "name": cls.SUBSCRIPTION_PLAN_NAME,
-                            "description": "30-day subscription to Orki — unlock Exams & Flashcards",
+                            "description": "30-day subscription to Orki \u2014 unlock Exams & Flashcards",
                             "amount": cls.SUBSCRIPTION_AMOUNT_CENTAVOS,
                             "quantity": 1,
                             "currency": cls.SUBSCRIPTION_CURRENCY,
@@ -115,9 +115,10 @@ class PayMongoService:
                     "success_url": f"{frontend_url}/subscribe?success=true",
                     "cancel_url": f"{frontend_url}/subscribe?cancelled=true",
                     
-                    # Metadata for webhook processing
+                    # Metadata for webhook processing — firebase_uid used instead of user_id
+                    # so the webhook handler can update Firestore without a database lookup
                     "metadata": {
-                        "user_id": str(user_id),
+                        "firebase_uid": firebase_uid,
                         "user_email": user_email,
                         "product": "orki_subscription",
                     },
@@ -140,9 +141,9 @@ class PayMongoService:
             )
             response.raise_for_status()
             
-            logger.info(f"✓ Checkout session created for user {user_id}")
+            logger.info(f"\u2713 Checkout session created for uid={firebase_uid}")
         except requests.RequestException as e:
-            logger.error(f"✗ PayMongo API error: {str(e)}")
+            logger.error(f"\u2717 PayMongo API error: {str(e)}")
             raise PayMongoError(f"Failed to create checkout: {str(e)}")
 
         data = response.json()
@@ -152,7 +153,7 @@ class PayMongoService:
         reference_id = checkout_data.get("id", "")
         
         if not checkout_url or not reference_id:
-            logger.error(f"✗ Invalid checkout response: {data}")
+            logger.error(f"\u2717 Invalid checkout response: {data}")
             raise PayMongoError("Invalid checkout response from PayMongo")
         
         return PayMongoCheckout(

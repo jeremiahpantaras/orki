@@ -1,9 +1,9 @@
 /**
  * The server-side session user returned by the backend.
- * This replaces the Firebase `User` type across the frontend.
+ * uid is the Firebase UID (string) — not a numeric database id.
  */
 export type SessionUser = {
-  id: number;
+  uid: string;
   email: string;
   display_name: string;
   first_name: string;

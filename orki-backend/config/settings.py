@@ -59,14 +59,13 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",            # Must be first
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",       # Added for Render static files
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",       # Static files on Render
+    "django.contrib.sessions.middleware.SessionMiddleware",  # Required by Django admin
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",  # Required by Django admin
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "core.middleware.SessionUserMiddleware",            # Attaches user_profile to request
+    "core.middleware.FirestoreUserMiddleware",          # Initialises request.user_profile
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -124,11 +123,13 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # ─── Django REST Framework ────────────────────────────────────────────────────
 
 REST_FRAMEWORK = {
+    # Stateless Firebase ID-token auth — no session DB required.
+    # Every request must include: Authorization: Bearer <firebase-id-token>
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "core.authentication.FirebaseAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "core.permissions.IsSessionAuthenticated",
+        "core.permissions.IsFirebaseAuthenticated",
     ],
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
@@ -149,10 +150,6 @@ REST_FRAMEWORK = {
 
 _FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
-# Accept requests from the configured FRONTEND_URL plus the common dev variants.
-# The session/CSRF cookies use SameSite=Lax, so the frontend and backend MUST
-# share the same hostname (both "localhost" or both "127.0.0.1") for cookies to
-# be included in cross-port fetch requests without requiring SameSite=None.
 _CORS_ORIGINS = list({
     _FRONTEND_URL,
     "http://localhost:3000",
@@ -161,26 +158,15 @@ _CORS_ORIGINS = list({
 })
 
 CORS_ALLOWED_ORIGINS = _CORS_ORIGINS
-CORS_ALLOW_CREDENTIALS = True          # Required for session cookies to be accepted
-CORS_EXPOSE_HEADERS = ["X-CSRFToken"]
-
-# ─── CSRF ─────────────────────────────────────────────────────────────────────
-
-CSRF_TRUSTED_ORIGINS = _CORS_ORIGINS
-CSRF_COOKIE_HTTPONLY = False           # Frontend JS must be able to read it for the header
-CSRF_COOKIE_SECURE = not DEBUG         # HTTPS-only in production
-# SameSite=None requires Secure=True; use Lax for development
-CSRF_COOKIE_SAMESITE = "Lax" if DEBUG else "None"
-
-# ─── Session Security ─────────────────────────────────────────────────────────
-
-SESSION_ENGINE = "django.contrib.sessions.backends.db"
-SESSION_COOKIE_NAME = "orki_session"
-SESSION_COOKIE_HTTPONLY = True         # Not accessible to client JS
-SESSION_COOKIE_SECURE = not DEBUG      # HTTPS-only in production
-# SameSite=None requires Secure=True; use Lax for development
-SESSION_COOKIE_SAMESITE = "Lax" if DEBUG else "None"
-SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days
+# credentials: "include" is no longer needed (no cookies), but harmless to keep
+CORS_ALLOW_CREDENTIALS = False
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "origin",
+    "x-requested-with",
+]
 
 # ─── Security Headers ─────────────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotification } from "@/providers/notification-provider";
 import { routes } from "@/shared/config/routes";
+import { http } from "@/shared/api/http";
 
 type CheckoutResponse = {
   checkout_url: string;
@@ -38,24 +39,20 @@ function SubscribeContent() {
       const verifySubscription = async () => {
         for (let i = 0; i < 10; i++) {
           try {
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}users/subscription/`,
-              { credentials: "include" }
+            const data = await http<{ status: string }>(
+              "users/subscription/"
             );
-            if (res.ok) {
-              const data = await res.json();
-              console.log(`[Attempt ${i + 1}] Subscription status:`, data.status);
-              
-              if (data.status === "active") {
-                notify("✓ Subscription activated! Redirecting to exams...", "success");
-                setTimeout(() => router.replace(routes.exams), 500);
-                return;
-              }
+            console.log(`[Attempt ${i + 1}] Subscription status:`, data.status);
+
+            if (data.status === "active") {
+              notify("✓ Subscription activated! Redirecting to exams...", "success");
+              setTimeout(() => router.replace(routes.exams), 500);
+              return;
             }
           } catch (error) {
             console.error("Failed to verify subscription:", error);
           }
-          
+
           // Wait 500ms before retrying
           await new Promise(resolve => setTimeout(resolve, 500));
         }
@@ -82,17 +79,11 @@ function SubscribeContent() {
 
     const fetchSubscription = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}users/subscription/`,
-          { credentials: "include" }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          console.log("Subscription status on load:", data.status);
-          setSubscriptionStatus(data.status);
-          if (data.status === "active") {
-            router.replace(routes.exams);
-          }
+        const data = await http<{ status: string }>("users/subscription/");
+        console.log("Subscription status on load:", data.status);
+        setSubscriptionStatus(data.status);
+        if (data.status === "active") {
+          router.replace(routes.exams);
         }
       } catch (error) {
         console.error("Failed to fetch subscription:", error);
@@ -113,25 +104,10 @@ function SubscribeContent() {
   const handleSubscribe = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}payments/checkout/`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCsrfToken(),
-          },
-        }
-      );
+      const data = await http<CheckoutResponse>("payments/checkout/", {
+        method: "POST",
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to create checkout");
-      }
-
-      const data: CheckoutResponse = await response.json();
-      
       // Redirect to PayMongo payment gateway
       window.location.href = data.checkout_url;
     } catch (error) {
@@ -274,12 +250,6 @@ function PaymentMethodBadge({ name }: { name: string }) {
       <span className="text-[11px] font-medium text-foreground">{name}</span>
     </div>
   );
-}
-
-function getCsrfToken(): string {
-  if (typeof document === "undefined") return "";
-  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-  return match ? match[1] : "";
 }
 
 export default function SubscribePage() {

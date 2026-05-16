@@ -7,25 +7,24 @@ export type SessionResponse = {
 };
 
 /**
- * Exchange a Firebase ID token for a backend server session.
- * The backend verifies the token with Firebase Admin SDK and sets an
- * HttpOnly session cookie.  No auth data is stored in the browser.
+ * Create or retrieve the Firestore user profile on the backend.
+ * The Firebase ID token is automatically added as an Authorization: Bearer
+ * header by http.ts — no need to pass it explicitly.
  */
-export function loginWithBackend(idToken: string): Promise<SessionResponse> {
+export function loginWithBackend(): Promise<SessionResponse> {
   return http<SessionResponse>("auth/login/", {
     method: "POST",
-    body: { id_token: idToken },
   });
 }
 
-/** Flush the server session (cookie cleared by Set-Cookie header). */
+/** Stateless logout — client clears Firebase Auth state. */
 export function logoutFromBackend(): Promise<void> {
   return http<void>("auth/logout/", { method: "POST" });
 }
 
 /**
- * Validate the current session and return the authenticated user.
- * Returns 401 (ApiError) if no valid session exists.
+ * Validate the current Firebase token and return the Firestore user profile.
+ * Returns 401 (ApiError) if the token is missing or invalid.
  */
 export function getSession(): Promise<SessionResponse> {
   return http<SessionResponse>("auth/session/");
@@ -46,3 +45,4 @@ export function saveOnboarding(data: {
     body: data,
   });
 }
+

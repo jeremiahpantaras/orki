@@ -94,7 +94,7 @@ export default function ExamsPage() {
   const examType = user?.exam_type ?? null;
 
   const { subjects, loading, error } = useSubjects(examType);
-  const { isSubscribed, subLoading, subscription } = useSubscriptionStatus(user?.id);
+  const { isSubscribed, subLoading, subscription } = useSubscriptionStatus(user?.uid);
 
   // Detect which subjects have a saved in-progress session.
   const savedSubjects = useMemo(() => {

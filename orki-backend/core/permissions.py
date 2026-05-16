@@ -1,39 +1,41 @@
 from rest_framework.permissions import BasePermission
 
 
-class IsSessionAuthenticated(BasePermission):
+class IsFirebaseAuthenticated(BasePermission):
     """
-    Grants access only when the request carries a valid server-side session
-    that was created by our Firebase token-verification login endpoint.
+    Grants access only when the request was authenticated via a valid
+    Firebase ID token (i.e. request.user is a FirebaseUser with a uid).
     """
 
     message = "Authentication credentials were not provided or have expired."
 
     def has_permission(self, request, view) -> bool:
         return bool(
-            request.session.get("firebase_uid")
-            and getattr(request, "user_profile", None) is not None
+            request.user
+            and getattr(request.user, "is_authenticated", False)
+            and getattr(request.user, "uid", None)
         )
+
+
+# Backward-compatible alias — views that still reference IsSessionAuthenticated
+# continue to work without renaming every import.
+IsSessionAuthenticated = IsFirebaseAuthenticated
 
 
 class IsSubscriber(BasePermission):
     """
-    Grants access only to users with active subscription.
-    
-    BACKEND ENFORCED: Frontend lock UI is not enough.
-    Exam + Flashcard endpoints must require this permission.
+    Grants access only to users with an active Firestore subscription.
+    Backend-enforced: frontend paywall UI alone is not sufficient.
     """
 
     message = "Premium access required. Please upgrade your subscription to access exams & flashcards."
 
     def has_permission(self, request, view) -> bool:
-        """Check if user has active subscription."""
-        if not getattr(request, "user_profile", None):
+        uid = getattr(request.user, "uid", None)
+        if not uid:
             return False
-        
         try:
-            subscription = request.user_profile.subscription
-            # is_active checks: status == "active" AND not expired
-            return subscription.is_active
+            from services.firebase.firestore import get_subscription
+            return get_subscription(uid).get("is_active", False)
         except Exception:
             return False

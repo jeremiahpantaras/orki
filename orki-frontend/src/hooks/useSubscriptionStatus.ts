@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { http } from "@/shared/api/http";
+
 type SubscriptionStatus = {
   status: string;
 } | null;
@@ -24,17 +26,16 @@ type UseSubscriptionStatusReturn = {
  * Pass `null` / `undefined` to skip fetching (e.g. while auth is loading).
  */
 export function useSubscriptionStatus(
-  userId: number | null | undefined,
+  userId: string | null | undefined,
 ): UseSubscriptionStatusReturn {
   const { data, isLoading } = useQuery<SubscriptionStatus>({
     queryKey: ["subscription", userId],
     queryFn: async () => {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}users/subscription/`,
-        { credentials: "include" },
-      );
-      if (!res.ok) return null;
-      return (await res.json()) as { status: string };
+      try {
+        return await http<{ status: string }>("users/subscription/");
+      } catch {
+        return null;
+      }
     },
     enabled: !!userId,
     // Keep subscription fresh for 5 min; GC after 10 min of inactivity.
