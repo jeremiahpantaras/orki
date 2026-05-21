@@ -16,10 +16,15 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from firebase_admin import auth as firebase_auth
+
 from core.permissions import IsFirebaseAuthenticated
 from core.throttling import AuthRateThrottle
 from services.firebase.firestore import (
     create_or_update_user_profile,
+    deactivate_user,
+    delete_user_data,
+    get_payment_history,
     get_subscription,
     get_user_profile,
     update_subscription,
@@ -59,6 +64,7 @@ def _profile_response(profile: dict) -> dict:
         "exam_date": profile.get("exam_date"),
         "onboarding_completed": bool(profile.get("onboarding_completed", False)),
         "professional_title": _EXAM_TITLE.get(exam_type, ""),
+        "is_active": profile.get("is_active", True),
     }
 
 
@@ -79,10 +85,19 @@ class LoginView(APIView):
 
     def post(self, request):
         uid = request.user.uid
-        profile = create_or_update_user_profile(uid, {
+        existing = get_user_profile(uid)
+
+        update_data: dict = {
             "email": request.user.email,
             "display_name": getattr(request.user, "display_name", ""),
-        })
+        }
+        # Auto-reactivate a previously deactivated account on sign-in
+        if existing and existing.get("is_active") is False:
+            update_data["is_active"] = True
+            update_data["deactivated_at"] = None
+            logger.info(f"Account reactivated on login: uid={uid}")
+
+        profile = create_or_update_user_profile(uid, update_data)
         return Response(
             {
                 "user": _profile_response(profile),
@@ -354,4 +369,176 @@ class PayMongoWebhookView(APIView):
         except Exception as exc:
             logger.error(f"Webhook processing error: {exc}", exc_info=True)
             return Response({"error": str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class VerifyPaymentView(APIView):
+    """
+    POST /api/v1/payments/verify/
+
+    Webhook fallback: manually fetches the user's pending checkout session
+    from PayMongo and activates the subscription in Firestore if payment
+    is confirmed.
+
+    Called by the frontend after a successful payment redirect when the
+    webhook may not have fired yet (network delay, wrong URL, etc.).
+    Uses the paymongo_checkout_id stored in Firestore at checkout creation.
+    """
+
+    permission_classes = [IsFirebaseAuthenticated]
+
+    def post(self, request):
+        uid = request.user.uid
+
+        try:
+            sub = get_subscription(uid)
+
+            # Already active — return immediately, nothing to do.
+            if sub.get("is_active"):
+                expiry_iso = sub.get("expiry_date")
+                days_remaining = None
+                if expiry_iso:
+                    try:
+                        expiry_dt = datetime.fromisoformat(expiry_iso)
+                        if expiry_dt.tzinfo is None:
+                            expiry_dt = expiry_dt.replace(tzinfo=tz.utc)
+                        delta = expiry_dt - datetime.now(tz.utc)
+                        days_remaining = max(0, delta.days)
+                    except (ValueError, TypeError):
+                        pass
+                return Response({
+                    "success": True,
+                    "status": "active",
+                    "is_active": True,
+                    "detail": "Subscription is already active.",
+                    "expires_at": expiry_iso,
+                    "days_remaining": days_remaining,
+                })
+
+            checkout_id = sub.get("paymongo_checkout_id", "")
+            if not checkout_id:
+                return Response(
+                    {"success": False, "detail": "No pending checkout session found. Please initiate a new payment."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Fetch the checkout session from PayMongo and sync if paid.
+            checkout_data = PayMongoService.get_checkout_session(checkout_id)
+            result = WebhookHandler.sync_from_checkout_session(uid, checkout_data)
+
+            if result.get("is_active"):
+                expiry_iso = result.get("expiry_date")
+                days_remaining = None
+                if expiry_iso:
+                    try:
+                        expiry_dt = datetime.fromisoformat(expiry_iso)
+                        if expiry_dt.tzinfo is None:
+                            expiry_dt = expiry_dt.replace(tzinfo=tz.utc)
+                        delta = expiry_dt - datetime.now(tz.utc)
+                        days_remaining = max(0, delta.days)
+                    except (ValueError, TypeError):
+                        pass
+                return Response({
+                    "success": True,
+                    "status": "active",
+                    "is_active": True,
+                    "detail": result.get("detail", "Subscription activated."),
+                    "expires_at": expiry_iso,
+                    "days_remaining": days_remaining,
+                })
+
+            return Response({
+                "success": False,
+                "status": result.get("status", "pending"),
+                "is_active": False,
+                "detail": result.get("detail", "Payment not yet confirmed."),
+            })
+
+        except PayMongoError as exc:
+            logger.error(f"✗ PayMongo verify error uid={uid}: {exc}")
+            return Response(
+                {"success": False, "detail": f"Payment verification error: {exc}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as exc:
+            logger.error(f"✗ Verify payment error uid={uid}: {exc}", exc_info=True)
+            return Response(
+                {"success": False, "detail": "Failed to verify payment. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+# ─── Profile Account Management ───────────────────────────────────────────────
+
+
+class SubscriptionHistoryView(APIView):
+    """
+    GET /api/v1/profile/subscription-history/
+
+    Returns a user's payment history from the Firestore transactions
+    subcollection.  Falls back to synthesising an entry from the current
+    subscription document for users who subscribed before this feature.
+    """
+
+    permission_classes = [IsFirebaseAuthenticated]
+
+    def get(self, request):
+        history = get_payment_history(request.user.uid)
+        return Response({"history": history})
+
+
+class DeactivateAccountView(APIView):
+    """
+    POST /api/v1/profile/deactivate/
+
+    Soft-deactivates the authenticated user's account by setting
+    is_active=False in the Firestore user document.  The account is
+    automatically reactivated the next time the user signs in.
+    """
+
+    permission_classes = [IsFirebaseAuthenticated]
+
+    def post(self, request):
+        uid = request.user.uid
+        try:
+            deactivate_user(uid)
+            logger.info(f"Account deactivated: uid={uid}")
+            return Response({"detail": "Account deactivated successfully."})
+        except Exception as exc:
+            logger.error(f"Failed to deactivate account uid={uid}: {exc}", exc_info=True)
+            return Response(
+                {"detail": "Failed to deactivate account. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class DeleteAccountView(APIView):
+    """
+    DELETE /api/v1/profile/delete-account/
+
+    Permanently deletes the authenticated user's account:
+    1. Removes all Firestore documents (profile, subscription, history,
+       exam attempts, analytics).
+    2. Deletes the Firebase Authentication account.
+
+    This action is irreversible.  The frontend must require explicit
+    email confirmation before calling this endpoint.
+    """
+
+    permission_classes = [IsFirebaseAuthenticated]
+
+    def delete(self, request):
+        uid = request.user.uid
+        try:
+            # Delete all Firestore data first
+            delete_user_data(uid)
+            # Delete the Firebase Auth account
+            firebase_auth.delete_user(uid)
+            logger.info(f"Account permanently deleted: uid={uid}")
+            return Response({"detail": "Account permanently deleted."})
+        except Exception as exc:
+            logger.error(f"Failed to delete account uid={uid}: {exc}", exc_info=True)
+            return Response(
+                {"detail": "Failed to delete account. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 

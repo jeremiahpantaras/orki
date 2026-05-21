@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +11,10 @@ import { useTheme, type Theme } from "@/providers/theme-provider";
 import { logoutFromBackend } from "@/shared/api/auth";
 import { signOutFirebase } from "@/shared/firebase/auth";
 import { routes } from "@/shared/config/routes";
+import { NextPaymentCard } from "@/widgets/profile/next-payment-card";
+import { SubscriptionHistoryCard } from "@/widgets/profile/subscription-history-card";
+import { DeactivateAccountModal } from "@/widgets/profile/deactivate-account-modal";
+import { DeleteAccountModal } from "@/widgets/profile/delete-account-modal";
 
 // ─── Settings group ───────────────────────────────────────────────────────────
 
@@ -237,6 +242,9 @@ export default function ProfilePage() {
   const { notify } = useNotification();
   const { professionalTitle, examFullName, examType } = useExamType();
 
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   const displayName = user?.display_name || `${user?.first_name ?? ""} ${user?.last_name ?? ""}`.trim() || "Orki User";
   const email = user?.email ?? "—";
   const initials = displayName
@@ -398,22 +406,11 @@ export default function ProfilePage() {
         />
       </SettingsGroup>
 
-      {/* Subscription */}
-      <SettingsGroup title="Subscription">
-        <div className="px-5 py-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-foreground">Orki Pro</p>
-              <p className="text-xs text-muted">Renews June 1, 2026 · $9.99/mo</p>
-            </div>
-            <span className="rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
-              Active
-            </span>
-          </div>
-        </div>
-        <SettingRow label="Manage Subscription" onClick={() => {}} />
-        <SettingRow label="Billing History" onClick={() => {}} />
-      </SettingsGroup>
+      {/* Subscription — live data */}
+      <NextPaymentCard />
+
+      {/* Payment History — live data */}
+      <SubscriptionHistoryCard />
 
       {/* Danger zone */}
       <SettingsGroup title="Account Actions">
@@ -424,12 +421,28 @@ export default function ProfilePage() {
           destructive
         />
         <SettingRow
+          label="Deactivate Account"
+          description="Temporarily disable your account — reactivate by signing in"
+          onClick={() => setDeactivateOpen(true)}
+          destructive
+        />
+        <SettingRow
           label="Delete Account"
           description="Permanently remove all data — cannot be undone"
-          onClick={() => {}}
+          onClick={() => setDeleteOpen(true)}
           destructive
         />
       </SettingsGroup>
+
+      {/* Modals */}
+      <DeactivateAccountModal
+        open={deactivateOpen}
+        onClose={() => setDeactivateOpen(false)}
+      />
+      <DeleteAccountModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+      />
 
       {/* Mascot footer */}
       <div className="flex flex-col items-center gap-2 pb-4 opacity-50">

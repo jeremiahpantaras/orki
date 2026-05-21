@@ -13,4 +13,5 @@ export type SessionUser = {
   professional_title: string;
   exam_date: string | null;
   onboarding_completed: boolean;
+  is_active: boolean;
 };

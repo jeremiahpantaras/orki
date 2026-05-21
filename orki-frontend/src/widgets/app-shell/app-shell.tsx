@@ -34,8 +34,10 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const { user } = useAuth();
   const pathname = usePathname();
-  // Hide bottom navigation during an active exam session
+  // Hide bottom navigation during an active exam session or on sub-pages
+  // that have their own back navigation (e.g. payment history detail).
   const isExamTakePage = /^\/exams\/[^/]+\/take(\?.*)?$/.test(pathname);
+  const hideBottomDock = isExamTakePage || pathname === "/profile/payment-history";
 
   return (
     <div className="ambient-bg min-h-screen text-foreground transition-colors duration-300">
@@ -57,10 +59,10 @@ export function AppShell({ children }: AppShellProps) {
           {user?.exam_date && <ExamCountdown examDate={user.exam_date} />}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl px-6 pt-4 pb-32">
+      <main className={`mx-auto w-full max-w-6xl px-6 pt-4 ${hideBottomDock ? "pb-10" : "pb-32"}`}>
         {children}
       </main>
-      {!isExamTakePage && <BottomDock />}
+      {!hideBottomDock && <BottomDock />}
     </div>
   );
 }

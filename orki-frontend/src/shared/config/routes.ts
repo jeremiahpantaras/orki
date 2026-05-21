@@ -10,6 +10,7 @@ export const routes = {
   examResults: (attemptId: number) => `/exams/results/${attemptId}` as const,
   flashcards: "/flashcards",
   profile: "/profile",
+  paymentHistory: "/profile/payment-history",
   subscribe: "/subscribe",
 } as const;
 

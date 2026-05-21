@@ -239,7 +239,7 @@ export default function FlashcardsPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
 
-  // ── Async / UI state ──────────────────────────────────────────────────────
+  // ── Async / UI state  ──────────────────────────────────────────────────────
   const [loadingSubject, setLoadingSubject] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 

@@ -35,10 +35,22 @@ function SubscribeContent() {
         "success"
       );
       
-      // Poll for subscription to become active (PayMongo webhook + DB update takes ~2-3 seconds)
+      // Poll for subscription to become active.
+      // On the first attempt we also call /payments/verify/ which syncs
+      // the payment from PayMongo in case the webhook hasn't fired yet.
       const verifySubscription = async () => {
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 12; i++) {
           try {
+            // On first pass, trigger a manual sync from PayMongo as a
+            // webhook fallback.  Subsequent passes just poll the status.
+            if (i === 0) {
+              try {
+                await http("payments/verify/", { method: "POST" });
+              } catch {
+                // Webhook may have already activated — ignore and continue polling.
+              }
+            }
+
             const data = await http<{ status: string }>(
               "users/subscription/"
             );
@@ -53,8 +65,8 @@ function SubscribeContent() {
             console.error("Failed to verify subscription:", error);
           }
 
-          // Wait 500ms before retrying
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Wait 1s between retries (gives PayMongo webhook time to fire).
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
         // If we got here, subscription didn't activate in time
