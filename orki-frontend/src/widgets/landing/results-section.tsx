@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 const stats = [
-  { value: "10,000+", label: "Students Enrolled", accent: "text-primary" },
+  { value: "1,000+", label: "Students Enrolled", accent: "text-primary" },
   { value: "92%", label: "Average Pass Rate", accent: "text-success" },
   { value: "2.4M", label: "Flashcards Studied", accent: "text-primary" },
   { value: "365", label: "Day Max Study Streak", accent: "text-success" },
@@ -12,7 +12,7 @@ const testimonials = [
     quote:
       "Orki completely changed how I prepared for the nursing board exam. The analytics helped me pinpoint exactly which topics needed the most work. I passed on my first attempt.",
     name: "Maria Santos",
-    role: "Nursing Board Passer, 2024",
+    role: "Nursing Board Passer, 2025",
     initials: "MS",
     color: "#3B82F6",
     stars: 5,
@@ -21,7 +21,7 @@ const testimonials = [
     quote:
       "The spaced repetition flashcards are incredible. I went from failing mock exams at 60% to comfortably passing the real thing. The streak system kept me disciplined every single day.",
     name: "Carlos Reyes",
-    role: "CPA Board Exam Passer, 2024",
+    role: "CPA Board Exam Passer, 2025",
     initials: "CR",
     color: "#8B5CF6",
     stars: 5,
@@ -30,7 +30,7 @@ const testimonials = [
     quote:
       "Studying for the bar felt overwhelming until I found Orki. The clean dashboard and daily progress tracking made a mountain of material feel manageable. Highly recommend.",
     name: "Anika Lim",
-    role: "Bar Exam Passer, 2023",
+    role: "Bar Exam Passer, 2025",
     initials: "AL",
     color: "#EC4899",
     stars: 5,
