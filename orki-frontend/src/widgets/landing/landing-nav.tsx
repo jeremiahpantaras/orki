@@ -59,7 +59,7 @@ export function LandingNav() {
               href={routes.register}
               className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
             >
-              Get Started Free
+              Get started
             </Link>
           </div>
 
@@ -126,7 +126,7 @@ export function LandingNav() {
               onClick={() => setMenuOpen(false)}
               className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm text-center hover:shadow-md transition-all duration-200"
             >
-              Get Started Free
+              Get started
             </Link>
           </div>
         </div>

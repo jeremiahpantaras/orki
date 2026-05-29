@@ -186,7 +186,7 @@ export function StudyProgress() {
                   href={routes.register}
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-8 py-4 font-semibold text-white shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
                 >
-                  Get Started Free
+                  Get started
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path
                       d="M3 8h10M9 4l4 4-4 4"
